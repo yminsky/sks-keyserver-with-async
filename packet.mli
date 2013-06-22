@@ -1,5 +1,7 @@
+open Core.Std
+
 type ptype =
-    Reserved
+  | Reserved
   | Public_Key_Encrypted_Session_Key_Packet
   | Signature_Packet
   | Symmetric_Key_Encrypted_Session_Key_Packet
@@ -19,20 +21,27 @@ type ptype =
   | Public_Subkey_Packet
   | Private_or_Experimental_ptype
   | Unexpected_ptype
-type packet = {
+
+type t = {
   content_tag : int;
   packet_type : ptype;
   packet_length : int;
   packet_body : string;
 }
+include Comparable with type t := t
+
 type sigsubpacket = { ssp_length : int; ssp_type : int; ssp_body : string; }
+
 val ssp_type_to_string : int -> string
-type key = packet list
+
+type key = t list
 val sigtype_to_string : int -> string
 val content_tag_to_ptype : int -> ptype
 val ptype_to_string : ptype -> string
+
 type mpi = { mpi_bits : int; mpi_data : string; }
 val pubkey_algorithm_string : int -> string
+
 type pubkeyinfo = {
   pk_version : int;
   pk_ctime : int64;
@@ -41,7 +50,7 @@ type pubkeyinfo = {
   pk_keylen : int;
 }
 type sigtype =
-    Signature_of_a_binary_document
+  | Signature_of_a_binary_document
   | Signature_of_a_canonical_text_document
   | Standalone_signature
   | Generic_certification_of_a_User_ID_and_Public_Key_packet
@@ -55,6 +64,7 @@ type sigtype =
   | Certification_revocation_signature
   | Timestamp_signature
   | Unexpected_sigtype
+
 type v3sig = {
   v3s_sigtype : int;
   v3s_ctime : int64;
@@ -64,6 +74,7 @@ type v3sig = {
   v3s_hash_value : string;
   v3s_mpis : mpi list;
 }
+
 type v4sig = {
   v4s_sigtype : int;
   v4s_pk_alg : int;
@@ -72,23 +83,26 @@ type v4sig = {
   v4s_hash_value : string;
   v4s_mpis : mpi list;
 }
+
 type signature = V3sig of v3sig | V4sig of v4sig
+
 val int_to_sigtype : int -> sigtype
 val content_tag_to_string : int -> string
-val print_packet : packet -> unit
-val write_packet_new :
-  packet ->
-  < write_byte : int -> 'a; write_int : int -> 'b;
-    write_string : string -> 'c; .. > ->
-  'c
+val print_packet : t -> unit
+
+val write_packet_new
+  :  t
+  -> < write_byte : int -> 'a; write_int : int -> 'b;
+       write_string : string -> 'c; .. >
+  -> 'c
 val pk_alg_to_ident : int -> string
-val write_packet_old :
-  packet ->
-  < write_byte : int -> 'a; write_int : int -> 'b;
-    write_string : string -> 'c; .. > ->
-  'c
-val write_packet :
-  packet ->
-  < write_byte : int -> 'a; write_int : int -> 'b;
-    write_string : string -> 'c; .. > ->
-  'c
+val write_packet_old
+  :  t
+  -> < write_byte : int -> 'a; write_int : int -> 'b;
+       write_string : string -> 'c; .. >
+  -> 'c
+val write_packet
+  :  t
+  -> < write_byte : int -> 'a; write_int : int -> 'b;
+       write_string : string -> 'c; .. >
+  -> 'c

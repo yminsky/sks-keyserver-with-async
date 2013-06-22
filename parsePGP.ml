@@ -22,7 +22,6 @@
 
 open Common
 open Core.Std
-open Packet
 
 exception Overlong_mpi
 exception Partial_body_length of int
@@ -64,8 +63,9 @@ let read_packet cin =
                let length_str = cin#read_string length_length in
                let length = Utils.int_from_bstring length_str
                               ~pos:0 ~len:length_length in
-               { content_tag = content_tag;
-                 packet_type = content_tag_to_ptype content_tag;
+               { Packet.
+                 content_tag;
+                 packet_type = Packet.content_tag_to_ptype content_tag;
                  packet_length = length;
                  packet_body = cin#read_string length;
                }
@@ -80,8 +80,9 @@ let read_packet cin =
         let content_tag = packet_tag land 0b111111 in
         let length = parse_new_packet_length cin in
         { (* packet_tag = packet_tag; *)
-          content_tag = content_tag;
-          packet_type = content_tag_to_ptype content_tag;
+          Packet.
+          content_tag;
+          packet_type = Packet.content_tag_to_ptype content_tag;
           packet_length = length;
           packet_body = cin#read_string length;
         }
@@ -114,7 +115,7 @@ let read_mpi cin =
     let data = cin#read_string
                  ((length + 7)/8)
     in
-    { mpi_bits = length; mpi_data = data }
+    { Packet. mpi_bits = length; mpi_data = data }
   with
       End_of_file -> raise Overlong_mpi
 
@@ -170,7 +171,7 @@ let parse_ecdh_pubkey cin =
    psize
 
 let parse_pubkey_info packet =
-  let cin = new Channel.string_in_channel packet.packet_body 0 in
+  let cin = new Channel.string_in_channel packet.Packet.packet_body 0 in
   let version = cin#read_byte in
   let creation_time = cin#read_int64_size 4 in
   let (algorithm,mpi,expiration, psize) =
@@ -179,8 +180,8 @@ let parse_pubkey_info packet =
       let algorithm = cin#read_byte in
       let (tmpmpi, tmpsize) =  match algorithm with
         | 18 -> parse_ecdh_pubkey cin
-        | 19 -> ( {mpi_bits = 0; mpi_data = ""}, (parse_ecdsa_pubkey cin))
-        | _ -> ( {mpi_bits = 0; mpi_data = ""} , -1 )
+        | 19 -> ( { Packet. mpi_bits = 0; mpi_data = ""}, (parse_ecdsa_pubkey cin))
+        | _ -> ( {Packet.mpi_bits = 0; mpi_data = ""} , -1 )
       in
       let mpis = match algorithm with
        | 18 -> tmpmpi
@@ -195,11 +196,12 @@ let parse_pubkey_info packet =
       (algorithm,mpi,Some expiration, -1)
       | _ -> failwith (sprintf "Unexpected pubkey version: %d" version)
   in
-  { pk_version = version;
+  { Packet.
+    pk_version = version;
     pk_ctime = creation_time;
     pk_expiration = (match expiration with Some 0 -> None | x -> x);
     pk_alg = algorithm;
-    pk_keylen = (match algorithm with |18|19 -> psize | _ -> mpi.mpi_bits);
+    pk_keylen = (match algorithm with |18|19 -> psize | _ -> mpi.Packet.mpi_bits);
   }
 
 (********************************************************)
@@ -227,7 +229,8 @@ let read_sigsubpacket cin =
   let length = parse_sigsubpacket_length cin in
   let ssp_type = cin#read_byte land 0x7f in
   let body = cin#read_string (length - 1) in
-  { ssp_length = length - 1;
+  { Packet.
+    ssp_length = length - 1;
     ssp_type = ssp_type;
     ssp_body = body;
   }
@@ -257,7 +260,7 @@ let read_subpackets cin length =
   loop []
 
 let parse_signature packet =
-  let cin = new Channel.string_in_channel packet.packet_body 0 in
+  let cin = new Channel.string_in_channel packet.Packet.packet_body 0 in
   let version = cin#read_byte in
   match version with
 
@@ -270,14 +273,16 @@ let parse_signature packet =
         let hash_alg = cin#read_byte in
         let hash_value = cin#read_string 2 in
         let mpis = read_mpis cin in
-        V3sig { v3s_sigtype = sigtype;
-                v3s_ctime = ctime;
-                v3s_keyid = keyid;
-                v3s_pk_alg = pk_alg;
-                v3s_hash_alg = hash_alg;
-                v3s_hash_value = hash_value;
-                v3s_mpis = mpis;
-              }
+        Packet.V3sig
+          { Packet.
+            v3s_sigtype = sigtype;
+            v3s_ctime = ctime;
+            v3s_keyid = keyid;
+            v3s_pk_alg = pk_alg;
+            v3s_hash_alg = hash_alg;
+            v3s_hash_value = hash_value;
+            v3s_mpis = mpis;
+          }
 
     | 4 ->
         let sigtype = cin#read_byte in
@@ -292,14 +297,15 @@ let parse_signature packet =
 
         let hash_value = cin#read_string 2 in
         let mpis = read_mpis cin in
-        V4sig { v4s_sigtype = sigtype;
-                v4s_pk_alg = pk_alg;
-                v4s_hashed_subpackets = hashed_subpackets;
-                v4s_unhashed_subpackets = unhashed_subpackets;
-                v4s_hash_value = hash_value;
-                v4s_mpis = mpis;
-              }
-
+        Packet.V4sig
+          { Packet.
+            v4s_sigtype = sigtype;
+            v4s_pk_alg = pk_alg;
+            v4s_hashed_subpackets = hashed_subpackets;
+            v4s_unhashed_subpackets = unhashed_subpackets;
+            v4s_hash_value = hash_value;
+            v4s_mpis = mpis;
+          }
 
     | _ -> failwith (sprintf "Unexpected signature version: %d" version)
 
@@ -317,43 +323,45 @@ let int64_of_string s =
   cin#read_int64_size (String.length s)
 
 let get_key_exptimes sign = match sign with
-  | V3sig sign ->
-      (Some sign.v3s_ctime, None)
-  | V4sig sign ->
-      let hashed_subpackets = sign.v4s_hashed_subpackets in
-      let (ctime,exptime_delta) =
-        List.fold_left hashed_subpackets ~init:(None,None)
-          ~f:(fun (ctime,exptime) ssp ->
-                if ssp.ssp_type = ssp_ctime_id && ssp.ssp_length = 4 then
-                  (Some (int64_of_string ssp.ssp_body),exptime)
-                else if ssp.ssp_type = ssp_keyexptime_id && ssp.ssp_length = 4 then
-                  (ctime,Some (int64_of_string ssp.ssp_body))
-                else
-                  (ctime,exptime)
-             )
-      in
-      match exptime_delta with
-        | None -> (None,None)
-        | Some _ -> (ctime,exptime_delta)
+  | Packet.V3sig sign ->
+    (Some sign.Packet.v3s_ctime, None)
+  | Packet.V4sig sign ->
+    let hashed_subpackets = sign.Packet.v4s_hashed_subpackets in
+    let (ctime,exptime_delta) =
+      List.fold_left hashed_subpackets ~init:(None,None)
+        ~f:(fun (ctime,exptime) ssp ->
+          if ssp.Packet.ssp_type = ssp_ctime_id
+          && ssp.Packet.ssp_length = 4
+          then (Some (int64_of_string ssp.Packet.ssp_body),exptime)
+          else if ssp.Packet.ssp_type = ssp_keyexptime_id
+               && ssp.Packet.ssp_length = 4
+          then (ctime,Some (int64_of_string ssp.Packet.ssp_body))
+          else (ctime,exptime)
+        )
+    in
+    match exptime_delta with
+    | None -> (None,None)
+    | Some _ -> (ctime,exptime_delta)
 
 
 let get_times sign = match sign with
-  | V3sig sign ->
-      (Some sign.v3s_ctime, None)
-  | V4sig sign ->
-      let hashed_subpackets = sign.v4s_hashed_subpackets in
-      let (ctime,exptime_delta) =
-        List.fold_left hashed_subpackets ~init:(None,None)
-          ~f:(fun (ctime,exptime) ssp ->
-                if ssp.ssp_type = ssp_ctime_id && ssp.ssp_length = 4 then
-                  (Some (int64_of_string ssp.ssp_body),exptime)
-                else if ssp.ssp_type = ssp_exptime_id && ssp.ssp_length = 4 then
-                  (ctime,Some (int64_of_string ssp.ssp_body))
-                else
-                  (ctime,exptime)
-             )
-      in
-      match (ctime,exptime_delta) with
-        | (Some x,None) -> (Some x,None)
-        | (None,_) -> (None,None)
-        | (Some x,Some y) -> (Some x,Some (Int64.(x + y)))
+  | Packet.V3sig sign ->
+    (Some sign.Packet.v3s_ctime, None)
+  | Packet.V4sig sign ->
+    let hashed_subpackets = sign.Packet.v4s_hashed_subpackets in
+    let (ctime,exptime_delta) =
+      List.fold_left hashed_subpackets ~init:(None,None)
+        ~f:(fun (ctime,exptime) ssp ->
+          if ssp.Packet.ssp_type = ssp_ctime_id
+          && ssp.Packet.ssp_length = 4
+          then (Some (int64_of_string ssp.Packet.ssp_body),exptime)
+          else if ssp.Packet.ssp_type = ssp_exptime_id
+               && ssp.Packet.ssp_length = 4
+          then (ctime,Some (int64_of_string ssp.Packet.ssp_body))
+          else (ctime,exptime)
+        )
+    in
+    match (ctime,exptime_delta) with
+    | (Some x,None) -> (Some x,None)
+    | (None,_) -> (None,None)
+    | (Some x,Some y) -> (Some x,Some (Int64.(x + y)))

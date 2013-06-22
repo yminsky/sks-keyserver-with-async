@@ -20,13 +20,8 @@
 (* USA or see <http://www.gnu.org/licenses/>.                          *)
 (***********************************************************************)
 
-open Printf
-open StdLabels
-open MoreLabels
 open Common
-
-open Packet
-module Set = PSet.Set
+open Core.Std
 
 (* Compute PGP Key Fingerprint and PGP KeyIDs *)
 
@@ -51,7 +46,7 @@ type result = { fp : string;
               }
 
 let from_packet packet =
-  let cin = new Channel.string_in_channel packet.packet_body 0 in
+  let cin = new Channel.string_in_channel packet.Packet.packet_body 0 in
   let version = cin#read_byte in
   match version with
       2 | 3 ->
@@ -62,12 +57,12 @@ let from_packet packet =
            and algorithm type (1 octet) *)
         let n = ParsePGP.read_mpi cin in (* modulus *)
         let e = ParsePGP.read_mpi cin in (* exponent *)
-        hash#add_substring n.mpi_data 0 ((n.mpi_bits + 7)/8);
-        hash#add_substring e.mpi_data 0 ((e.mpi_bits + 7)/8);
+        hash#add_substring n.Packet.mpi_data 0 ((n.Packet.mpi_bits + 7)/8);
+        hash#add_substring e.Packet.mpi_data 0 ((e.Packet.mpi_bits + 7)/8);
         let fingerprint = hash#result
         and keyid =
-          let len = String.length n.mpi_data in
-          String.sub n.mpi_data ~pos:(len - 8) ~len:8
+          let len = String.length n.Packet.mpi_data in
+          String.sub n.Packet.mpi_data ~pos:(len - 8) ~len:8
         in
         hash#wipe;
         { fp = fingerprint;
@@ -80,9 +75,9 @@ let from_packet packet =
         (* This seems wrong.  The spec suggests that packet.packet_tag
            is what should be used here.  But this is what's done in the GPG
            codebase, so I'm copying it. *)
-        hash#add_byte ((packet.packet_length lsr 8) land 0xFF);
-        hash#add_byte (packet.packet_length land 0xFF);
-        hash#add_string packet.packet_body;
+        hash#add_byte ((packet.Packet.packet_length lsr 8) land 0xFF);
+        hash#add_byte (packet.Packet.packet_length land 0xFF);
+        hash#add_string packet.Packet.packet_body;
         let fingerprint = hash#result in
         let keyid =
           let len = String.length fingerprint in
@@ -97,8 +92,8 @@ let from_packet packet =
         failwith "Fingerprint.from_packet: Unexpected version number"
 
 let rec from_key key = match key with
-    packet::key_tail ->
-      if  packet.packet_type = Public_Key_Packet
+  | packet :: key_tail ->
+      if  packet.Packet.packet_type = Packet.Public_Key_Packet
       then from_packet packet
       else from_key key_tail
   | [] ->
@@ -134,7 +129,7 @@ let keyid32_of_string s =
     then "0x" ^ s else s
   in
   let x = Int64.of_string s in
-  let x = Int64.to_int32 x in
+  let x = Int64.to_int32_exn x in
   let cout = Channel.new_buffer_outc 4 in
   cout#write_int32 x;
   cout#contents
@@ -142,7 +137,7 @@ let keyid32_of_string s =
 let keyid_of_string s =
   let x = Int64.of_string s in
   if is_32bit x then (
-    let x = Int64.to_int32 x in
+    let x = Int64.to_int32_exn x in
     let cout = Channel.new_buffer_outc 4 in
     cout#write_int32 x;
     cout#contents
@@ -166,12 +161,15 @@ let keyid_from_key ?(short=true) key =
 let key_and_subkey_results key =
   match key with
   | [] -> raise Not_found
-  | ({ packet_type = Public_Key_Packet} as lead_packet)::tl ->
+  | ({ Packet.packet_type = Packet.Public_Key_Packet; _ } as lead_packet)
+    :: tl
+    ->
     let rec loop packets = match packets with
       | [] -> []
-      | ({ packet_type = Public_Subkey_Packet} as pack)::tl ->
+      | ({ Packet.packet_type = Packet.Public_Subkey_Packet; _} as pack)
+        :: tl ->
         from_packet pack :: loop tl
-      | pack :: tl -> loop tl
+      | _ :: tl -> loop tl
     in
     (from_packet lead_packet, loop tl)
   | _ -> raise Not_found
@@ -187,7 +185,9 @@ let key_and_subkey_ids key ~get =
   let key_id = get key_result in
   let subkey_ids =
     List.map ~f:get subkey_results
-    |! Set.of_list |! Set.remove key_id |! Set.elements
+    |> String.Set.of_list
+    |> (fun s -> Set.remove s key_id)
+    |> Set.elements
   in
   (key_id,subkey_ids)
 ;;

@@ -23,11 +23,7 @@
 (* USA or see <http://www.gnu.org/licenses/>.                          *)
 (***********************************************************************)
 
-open StdLabels
-open MoreLabels
-
-open Packet
-open Printf
+open Core.Std
 
 let hash_bytes = 16
 

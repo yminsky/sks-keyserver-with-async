@@ -20,15 +20,13 @@
 (* USA or see <http://www.gnu.org/licenses/>.                          *)
 (***********************************************************************)
 
-open StdLabels
-open MoreLabels
-open Printf
 open Common
+open Core.Std
 
 let amp = Str.regexp "&"
 
 let chsplit c s =
-  let eqpos = String.index s c in
+  let eqpos = String.index_exn s c in
   let first = Str.string_before s eqpos
   and second = Str.string_after s (eqpos + 1) in
   (first, second)
@@ -67,7 +65,7 @@ let rec request_of_oplist ?(request=default_request) oplist =
           match hd with
             | ("options",options) ->
                 let options = Str.split comma_rxp options in
-                if List.mem "mr" options
+                if List.mem options "mr"
                 then { request with machine_readable = true }
                 else request
             | ("op","stats") -> {request with kind = Stats };

@@ -20,11 +20,7 @@
 (* USA or see <http://www.gnu.org/licenses/>.                          *)
 (***********************************************************************)
 
-open Printf
-open StdLabels
-open MoreLabels
-
-open Packet
+open Core.Std
 
 let limit = try int_of_string Sys.argv.(1) with _ -> 10
 let cin = new Channel.sys_in_channel stdin
