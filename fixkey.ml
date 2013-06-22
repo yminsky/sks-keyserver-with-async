@@ -20,12 +20,8 @@
 (* USA or see <http://www.gnu.org/licenses/>.                          *)
 (***********************************************************************)
 
-open StdLabels
-open MoreLabels
 open Common
-open Packet
-
-module Map = PMap.Map
+open Core.Std
 
 exception Bad_key
 exception Standalone_revocation_certificate
@@ -51,29 +47,25 @@ let filters = [ "yminsky.dedup"; "yminsky.merge" ]
 
 let get_keypacket pkey = pkey.KeyMerge.key
 
-let ( |= ) map key = Map.find key map
-let ( |< ) map (key,data) = Map.add ~key ~data map
-
-let rec join_by_keypacket map keylist = match keylist with
+let rec join_by_keypacket map keylist =
+  match keylist with
   | [] -> map
   | key::tl ->
-      let keypacket = get_keypacket key in
-      let map =
-        try
-          let keylist_ref = map |= keypacket in
-          keylist_ref := key::!keylist_ref;
-          map
-        with
-            Not_found ->
-              map |< (keypacket,ref [key])
-      in
-      join_by_keypacket map tl
+    let keypacket = get_keypacket key in
+    let map =
+      match Map.find map keypacket with
+      | None -> Map.add map ~key:keypacket ~data:(ref [key])
+      | Some keylist_ref ->
+        keylist_ref := key::!keylist_ref;
+        map
+    in
+    join_by_keypacket map tl
 
 (** Given a list of parsed keys, returns a list of parsed key lists,
   grouped by keypacket *)
 let join_by_keypacket keys =
-  Map.fold ~f:(fun ~key ~data list -> !data::list) ~init:[]
-    (join_by_keypacket Map.empty keys)
+  Map.fold ~f:(fun ~key:_ ~data list -> !data::list) ~init:[]
+    (join_by_keypacket Packet.Map.empty keys)
 
 
 (** merges a list of pkeys, throwing a failure if the merge cannot procede *)
@@ -105,7 +97,7 @@ let compute_merge_replacements keys =
               None::list
          )
   in
-  strip_opt replacements
+  List.filter_opt replacements
 
 
 (**********************************************************************)
@@ -116,24 +108,25 @@ let compute_merge_replacements keys =
   be discarded
 *)
 let is_revocation_signature pack =
-   match pack.packet_type with
-    | Signature_Packet ->
-      let parsed_signature = ParsePGP.parse_signature pack in
-      let sigtype = match parsed_signature with
-       | V3sig s -> s.v3s_sigtype
-       | V4sig s -> s.v4s_sigtype
-     in
-     let result =  match (int_to_sigtype sigtype) with
-           | Key_revocation_signature | Subkey_revocation_signature
-             | Certification_revocation_signature -> true
-           | _ -> false
-     in
-     result
-    | _ -> false
+  match pack.Packet.packet_type with
+  | Packet.Signature_Packet ->
+    let parsed_signature = ParsePGP.parse_signature pack in
+    let sigtype = match parsed_signature with
+      | Packet.V3sig s -> s.Packet.v3s_sigtype
+      | Packet.V4sig s -> s.Packet.v4s_sigtype
+    in
+    let result =  match (Packet.int_to_sigtype sigtype) with
+      | Packet.Key_revocation_signature
+      | Packet.Subkey_revocation_signature
+      | Packet.Certification_revocation_signature -> true
+      | _ -> false
+    in
+    result
+  | _ -> false
 
 let canonicalize key =
-  if is_revocation_signature (List.hd key)
-    then raise Standalone_revocation_certificate;
+  if is_revocation_signature (List.hd_exn key)
+  then raise Standalone_revocation_certificate;
   try KeyMerge.dedup_key key
   with KeyMerge.Unparseable_packet_sequence -> raise Bad_key
 
@@ -142,11 +135,11 @@ open KeyMerge
 
 let good_key pack =
   try ignore (ParsePGP.parse_pubkey_info pack); true
-  with e -> false
+  with _ -> false
 
 let good_signature pack =
   try ignore (ParsePGP.parse_signature pack); true
-  with e -> false
+  with _ -> false
 
 let drop_bad_sigs packlist =
   List.filter ~f:good_signature packlist

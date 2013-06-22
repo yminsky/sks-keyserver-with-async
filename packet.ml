@@ -43,18 +43,25 @@ type ptype = | Reserved
              | Public_Subkey_Packet
              | Private_or_Experimental_ptype
              | Unexpected_ptype
+with sexp, compare
 
-type packet = { content_tag: int;
-                packet_type: ptype;
-                packet_length: int;
-                packet_body: string;
-              }
+module T = struct
+  type t = { content_tag: int;
+             packet_type: ptype;
+             packet_length: int;
+             packet_body: string;
+           }
+  with sexp, compare
+end
+include T
+include Comparable.Make(T)
 
 type sigsubpacket =
     { ssp_length: int;
       ssp_type: int;
       ssp_body: string;
     }
+with sexp, compare
 
 let ssp_type_to_string i = match i with
   | 2 -> "signature creation time"
@@ -152,6 +159,7 @@ let ptype_to_string ptype = match ptype with
 type mpi = { mpi_bits: int;
              mpi_data: string;
            }
+with sexp, compare
 
 let pubkey_algorithm_string i =  match i with
   | 1 -> "RSA (Encrypt or Sign)"
@@ -174,7 +182,7 @@ type pubkeyinfo =
       pk_alg: int;
       pk_keylen: int;
     }
-
+with sexp, compare
 
 
 type sigtype = | Signature_of_a_binary_document
@@ -191,6 +199,7 @@ type sigtype = | Signature_of_a_binary_document
                | Certification_revocation_signature
                | Timestamp_signature
                | Unexpected_sigtype
+with sexp, compare
 
 type v3sig =
     { v3s_sigtype: int;
@@ -201,6 +210,7 @@ type v3sig =
       v3s_hash_value: string;
       v3s_mpis: mpi list;
     }
+with sexp, compare
 
 type v4sig =
     { v4s_sigtype: int;
@@ -210,8 +220,11 @@ type v4sig =
       v4s_hash_value: string;
       v4s_mpis: mpi list;
     }
+with sexp, compare
 
-type signature = V3sig of v3sig | V4sig of v4sig
+type signature =
+    V3sig of v3sig | V4sig of v4sig
+with sexp, compare
 
 let int_to_sigtype byte =
   match byte with

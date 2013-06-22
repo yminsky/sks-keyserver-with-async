@@ -20,14 +20,8 @@
 (* USA or see <http://www.gnu.org/licenses/>.                          *)
 (***********************************************************************)
 
-open StdLabels
-open MoreLabels
-open Printf
 open Common
-open Packet
-
-module Set = PSet.Set
-module Map = PMap.Map
+open Core.Std
 
 exception Unparseable_packet_sequence
 
@@ -74,10 +68,10 @@ exception Unparseable_packet_sequence
 (*******************************************************************)
 (* Types for representing the structure of a key *)
 
-type sigpair = packet * packet list
+type sigpair = Packet.t * Packet.t list
 
-type pkey = { key : packet;
-              selfsigs: packet list; (* revocations only in v3 keys *)
+type pkey = { key : Packet.t;
+              selfsigs: Packet.t list; (* revocations only in v3 keys *)
               uids: sigpair list;
               subkeys: sigpair list;
             }
@@ -109,87 +103,78 @@ let print_pkey key =
 (*******************************************************************)
 
 let get_version packet =
-  match packet.packet_type with
-      Public_Key_Packet -> int_of_char packet.packet_body.[0]
-    | Signature_Packet -> int_of_char packet.packet_body.[0]
-    | _ -> raise Not_found
+  match packet.Packet.packet_type with
+  | Packet.Public_Key_Packet -> int_of_char packet.Packet.packet_body.[0]
+  | Packet.Signature_Packet -> int_of_char packet.Packet.packet_body.[0]
+  | _ -> raise Not_found
 
 let key_to_stream key =
-  let ptype_list = List.map ~f:(fun pack -> (pack.packet_type,pack)) key in
+  let ptype_list = List.map ~f:(fun pack -> (pack.Packet.packet_type,pack)) key in
   Stream.of_list ptype_list
-
-
-
 
 (*******************************************************************)
 (*** Key Parsing ***************************************************)
 (*******************************************************************)
 
-let rec parse_keystr = parser
-  | [< '(Public_Key_Packet,p) ; s >] ->
-      match get_version p with
-        | 4 ->
-            (match s with parser [< selfsigs = siglist;
-                                    uids = uidlist;
-                                    subkeys = subkeylist;
-                                 >]
-                 -> { key = p;
-                      selfsigs = selfsigs;
-                      uids = uids;
-                      subkeys = subkeys;
-                    })
-        | 2 | 3 ->
-            (match s with parser [< revocations = siglist;
-                                    uids = uidlist;
-                                 >] ->
-               { key = p ;
-                 selfsigs = revocations;
-                 uids = uids;
-                 subkeys = [];
-               })
-        | _ -> failwith "Unexpected key packet version number"
-and siglist = parser
-  | [< '(Signature_Packet,p); tl = siglist >] -> p::tl
-  | [< >] -> []
-and uidlist = parser
-  | [< '(User_ID_Packet,p); sigs = siglist; tl = uidlist >] ->
-      (p,sigs)::tl
-  | [< '(User_Attribute_Packet,p); sigs = siglist; tl = uidlist >] ->
-      (p,sigs)::tl
-      (*
-      (p,sigs)::(match s with parser
-                    | [< '(User_ID_Packet,p); sigs = siglist; tl = uidlist >] ->
-                       (p,sigs)::tl
-                   | [< >] -> [])
-      *)
-  | [< >] -> []
-and subkeylist = parser
-  | [< '(Public_Subkey_Packet,p); sigs = siglist; tl = subkeylist >] ->
-      (p,sigs)::tl
-  | [< >] -> []
+let rec parse_keystr =
+  parser
+| [< '(Packet.Public_Key_Packet,p) ; s >] ->
+  match get_version p with
+  | 4 ->
+    (match s with
+       parser [< selfsigs = siglist;
+                 uids = uidlist;
+                 subkeys = subkeylist;
+              >]
+       ->
+       { key = p;
+         selfsigs = selfsigs;
+         uids = uids;
+         subkeys = subkeys;
+       })
+  | 2 | 3 ->
+    (match s with
+       parser [< revocations = siglist;
+                 uids = uidlist;
+              >]
+       ->
+       { key = p ;
+        selfsigs = revocations;
+        uids = uids;
+        subkeys = [];
+      })
+  | _ -> failwith "Unexpected key packet version number"
+and siglist =
+  parser
+| [< '(Packet.Signature_Packet,p); tl = siglist >] -> p::tl
+| [< >] -> []
+and uidlist =
+  parser
+| [< '(Packet.User_ID_Packet,p); sigs = siglist; tl = uidlist >] ->
+  (p,sigs)::tl
+| [< '(Packet.User_Attribute_Packet,p); sigs = siglist; tl = uidlist >] ->
+  (p,sigs)::tl
+| [< >] -> []
+and subkeylist =
+  parser
+| [< '(Packet.Public_Subkey_Packet,p); sigs = siglist; tl = subkeylist >] ->
+  (p,sigs)::tl
+| [< >] -> []
 
 (*******************************************************************)
 (*** Key Merging Code  *********************************************)
 (*******************************************************************)
 
-let set_of_list list = List.fold_left ~init:Set.empty list
-                         ~f:(fun set x -> Set.add x set)
-
 let merge_sigpairs pairs =
-  let map =
-    List.fold_left pairs
-      ~f:(fun map (pack,sigs) ->
-            try
-              let old_sigs = Map.find pack map in
-              (* If front packet is already there, add in new sigs,
-                 discarding duplicates *)
-              Map.add ~key:pack ~data:(Utils.dedup (old_sigs @ sigs)) map
-            with
-                (* otherwise, add in data by itself *)
-                Not_found -> Map.add ~key:pack ~data:sigs map)
-      ~init:Map.empty
-  in
-  Map.fold ~f:(fun ~key:pack ~data:sigs list -> (pack,sigs)::list) map ~init:[]
+  List.fold pairs ~init:Packet.Map.empty ~f:(fun map (pack,sigs) ->
+      match Map.find map pack with
+      | None -> Map.add ~key:pack ~data:sigs map
+      | Some old_sigs ->
+        (* If front packet is already there, add in new sigs,
+           discarding duplicates *)
+        Map.add ~key:pack ~data:(Utils.dedup (old_sigs @ sigs)) map
+    )
+  |> Map.fold ~f:(fun ~key:pack ~data:sigs list -> (pack,sigs)::list) ~init:[]
 
 let merge_sigpair_lists l1 l2 =
   merge_sigpairs (l1 @ l2)
@@ -229,20 +214,17 @@ let merge key1 key2 =
     let pkey1 = key_to_pkey key1
     and pkey2 = key_to_pkey key2 in
     let mkey = merge_pkeys pkey1 pkey2 in
-    apply_opt ~f:flatten mkey
+    Option.map ~f:flatten mkey
   with
-      Unparseable_packet_sequence -> None
+    Unparseable_packet_sequence -> None
 
 let dedup_sigpairs pairs =
   let map =
-    List.fold_left pairs ~init:Map.empty
-      ~f:(fun map (pack,sigs) ->
-            try
-              let old_sigs = Map.find pack map in
-              Map.add ~key:pack ~data:(Utils.dedup (sigs @ old_sigs)) map
-            with
-                Not_found -> Map.add ~key:pack ~data:sigs map
-         )
+    List.fold_left pairs ~init:Packet.Map.empty ~f:(fun map (pack,sigs) ->
+      Map.change map pack (function
+        | None -> Some sigs
+        | Some old_sigs -> Some (List.dedup (sigs @ old_sigs)))
+    )
   in
   Map.to_alist map
 

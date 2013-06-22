@@ -20,11 +20,8 @@
 (* USA or see <http://www.gnu.org/licenses/>.                          *)
 (***********************************************************************)
 
-open StdLabels
-open MoreLabels
-open Printf
 open Common
-module Set = PSet.Set
+open Core.Std
 
 (** Invariants to check:
 
@@ -37,7 +34,6 @@ module Set = PSet.Set
 *)
 
 open Bdb
-open Packet
 
 type dbsettings = { withtxn: bool;
                     cache_bytes: int option;
