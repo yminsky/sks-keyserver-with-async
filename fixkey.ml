@@ -28,16 +28,13 @@ exception Standalone_revocation_certificate
 
 
 (** list of filters currently applied on incoming keys.  Filter types are
-  included in comma-separated list, and should not include commas or
-  whitespace
+    included in comma-separated list, and should not include commas or whitespace
 
-  meaning of filter types:
+    meaning of filter types:
 
-  - yminsky.merge:
-      Merges all keys in database that can be merged.
-  - yminsky.dedup:
-      Parses all keys and removes duplicates.  Unparseable keys
-      are removed from the database.
+    - yminsky.merge: Merges all keys in database that can be merged.
+    - yminsky.dedup: Parses all keys and removes duplicates.  Unparseable keys
+                     are removed from the database.
 *)
 let filters = [ "yminsky.dedup"; "yminsky.merge" ]
 
