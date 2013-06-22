@@ -21,29 +21,19 @@
 (** Common services, including error reporting, logging,
   exception handling and port definitions  *)
 
-open Printf
-open StdLabels
-open MoreLabels
-module Unix = UnixLabels
+open Core.Std
 
-exception Bug of string
 exception Transaction_aborted of string
 exception Argument_error of string
 exception Unit_test_failure of string
-
-module Map = PMap.Map
-let (|<) map key = (fun data -> Map.add ~key ~data map)
-let (|=) map key = Map.find key map
-
-(** Function sequencing *)
-let (|!) x f = f x
 
 (********************************************************************)
 
 (** filters applied to all incoming keys *)
 let enforced_filters = ["yminsky.dedup"]
 
-let version_tuple = (__VERSION__)
+let version_tuple = (-1,-1,-1)          (* CR yminsky: NEED TO FIX THE BUILD to
+                                           provide a version number *)
 (* for Release versions, COMMONCAMLFLAGS in Makefile should include          *)
 (* '-warn-error a'. Development work should use '-warn-error A' for stricter *)
 (* language checking. This affects the Ocaml compiler beginning with v4.01.0 *)
@@ -63,12 +53,6 @@ let parse_version_string vstr =
   let ar = Array.of_list (Str.bounded_split period_regexp vstr 3) in
   (int_of_string ar.(0), int_of_string ar.(1), int_of_string ar.(2))
 
-let err_to_string err = match err with
-    Unix.Unix_error (enum,fname,param) ->
-      sprintf "Unix error: %s - %s(%s)"
-      (Unix.error_message enum) fname param
-  | e -> Printexc.to_string e
-
 (**************************************************************************)
 (** Logfile control *)
 
@@ -78,7 +62,7 @@ let stored_logfile_name = ref None
 (**************************************************************************)
 
 let plerror level format =
-  kprintf (fun s ->
+  ksprintf (fun s ->
              if !Settings.debug && level  <= !Settings.debuglevel
              then  (
                let tm = Unix.localtime (Unix.time ()) in
@@ -106,7 +90,7 @@ let reopen_logfile () =
   match !stored_logfile_name with
     | None -> ()
     | Some name ->
-        close_out !logfile;
+        Out_channel.close !logfile;
         logfile := open_out_gen [ Open_wronly; Open_creat; Open_append; ]
           0o600 name
 
@@ -115,19 +99,18 @@ let reopen_logfile () =
 let perror x = plerror 3 x
 
 let eplerror level e format =
-  kprintf (fun s ->
-             if !Settings.debug && level  <= !Settings.debuglevel
-             then  (
-               let tm = Unix.localtime (Unix.time ()) in
-               fprintf !logfile "%04d-%02d-%02d %02d:%02d:%02d "
-                 (tm.Unix.tm_year + 1900) (tm.Unix.tm_mon + 1)
-                 tm.Unix.tm_mday (* date *)
-                 tm.Unix.tm_hour tm.Unix.tm_min tm.Unix.tm_sec;
-               output_string !logfile s;
-               fprintf !logfile ": %s\n" (err_to_string e);
-               flush !logfile;
-             )
-          )
+  ksprintf (fun s ->
+    if !Settings.debug && level  <= !Settings.debuglevel
+    then (
+      let tm = Unix.localtime (Unix.time ()) in
+      fprintf !logfile "%04d-%02d-%02d %02d:%02d:%02d "
+        (tm.Unix.tm_year + 1900) (tm.Unix.tm_mon + 1)
+        tm.Unix.tm_mday (* date *)
+        tm.Unix.tm_hour tm.Unix.tm_min tm.Unix.tm_sec;
+      output_string !logfile s;
+      fprintf !logfile ": %s\n" (Exn.to_string e);
+      flush !logfile;
+    ))
     format
 
 let eperror x = eplerror 3 x
@@ -136,70 +119,30 @@ let eperror x = eplerror 3 x
 (** Setup signals.  In particular, most of the time we want to catch and
   gracefully handle both sigint and sigterm *)
 
-let catch_break = ref false
-let handle_interrupt i =
-  if !catch_break
-  then raise Sys.Break
-
-
-let () = Sys.set_signal Sys.sigterm (Sys.Signal_handle handle_interrupt)
-let () = Sys.set_signal Sys.sigint (Sys.Signal_handle handle_interrupt)
-let () = Sys.set_signal Sys.sigpipe Sys.Signal_ignore
-let () = Sys.set_signal Sys.sigusr2 Sys.Signal_ignore
-let () = Sys.set_signal Sys.sighup
-           (Sys.Signal_handle (fun _ -> reopen_logfile ()))
-
+let catch_break = ref true
 let set_catch_break bool =
   catch_break := bool
-  (* Sys.catch_break bool; *)
 
-let () = set_catch_break true
+let () =
+  let module E = Signal.Expert in
+  let handle_interrupt _ =
+    if !catch_break
+    then raise Sys.Break
+  in
+  E.handle Signal.term  handle_interrupt;
+  E.handle Signal.int   handle_interrupt;
+  E.set    Signal.pipe  `Ignore;
+  E.set    Signal.usr2  `Ignore;
+  E.handle Signal.hup   (fun _ -> reopen_logfile ())
+
 
 (********************************************************************)
 
-let protect ~f ~finally =
-  let result = ref None in
-  let pfinally () =
-    set_catch_break false;
-    (try (finally () : unit)
-     with ee ->
-       set_catch_break true;
-       raise ee);
-    set_catch_break true;
-  in
-  try
-    result := Some (f ());
-    raise Exit
-  with
-      Exit as e ->
-        pfinally ();
-        (match !result with Some x -> x | None -> raise e)
-    | e ->
-        pfinally ();
-        raise e
-
-let fprotect ~f ~finally () = protect ~f ~finally
-
-let rec filter_opts optlist = match optlist with
-    [] -> []
-  | (Some x)::tl -> x::(filter_opts tl)
-  | None::tl -> filter_opts tl
-
 let decomment l =
-  try
-    let pos = String.index l '#' in
+  match String.index l '#' with
+  | None -> l
+  | Some pos ->
     String.sub l ~pos:0 ~len:pos
-  with
-      Not_found -> l
-
-let rec strip_opt list = match list with
-    [] -> []
-  | None::tl -> strip_opt tl
-  | (Some hd)::tl -> hd::(strip_opt tl)
-
-let apply_opt ~f opt = match opt with
-    None -> None
-  | Some x -> Some (f x)
 
 (***************************)
 
@@ -217,8 +160,9 @@ let make_addr_list address_string port =
   let addrlist = Str.split whitespace address_string in
   let servname = if port = 0 then "" else (string_of_int port) in
   let resolver host = List.map ~f:(fun ai -> ai.Unix.ai_addr)
-      (Unix.getaddrinfo host servname [Unix.AI_SOCKTYPE Unix.SOCK_STREAM]) in
-  List.flatten (List.map ~f:resolver addrlist)
+      (Unix.getaddrinfo host servname [Unix.AI_SOCKTYPE Unix.SOCK_STREAM])
+  in
+  List.concat (List.map ~f:resolver addrlist)
 
 let recon_port = !Settings.recon_port
 let recon_address = !Settings.recon_address
@@ -242,5 +186,6 @@ let get_client_recon_addr =
 
 let match_client_recon_addr addr =
   let family = Unix.domain_of_sockaddr addr in
-  List.find ~f:(fun caddr -> family = Unix.domain_of_sockaddr caddr)
-    (get_client_recon_addr ())
+  List.find_exn (get_client_recon_addr ()) ~f:(fun caddr ->
+    family = Unix.domain_of_sockaddr caddr)
+

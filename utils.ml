@@ -20,13 +20,7 @@
 (* USA or see <http://www.gnu.org/licenses/>.                          *)
 (***********************************************************************)
 
-open StdLabels
-open MoreLabels
-module Unix=UnixLabels
-module Set = PSet.Set
-module Map = PMap.Map
-
-open Printf
+open Core.Std
 
 let compose f g x = f (g x)
 let iceil x =  int_of_float (ceil x)

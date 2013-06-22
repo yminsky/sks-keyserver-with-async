@@ -20,7 +20,11 @@
 (* USA or see <http://www.gnu.org/licenses/>.                          *)
 (***********************************************************************)
 
+open Core.Std
 type zz
+type t = zz
+include Comparable with type t := t
+
 type zzref
 type mut_array
 val order : Number.z ref
@@ -87,36 +91,6 @@ val mut_array_of_array : zz array -> mut_array
 val to_string_array : zz -> string array
 val rand : (unit -> int) -> zz
 
-(** Set specialized to ZZp.zz *)
-module Set :
-  sig
-    type elt = zz
-    type t
-    val empty : t
-    val is_empty : t -> bool
-    val mem : elt -> t -> bool
-    val add : elt -> t -> t
-    val singleton : elt -> t
-    val remove : elt -> t -> t
-    val union : t -> t -> t
-    val inter : t -> t -> t
-    val diff : t -> t -> t
-    val compare : t -> t -> int
-    val equal : t -> t -> bool
-    val subset : t -> t -> bool
-    val iter : f:(elt -> unit) -> t -> unit
-    val fold : f:(elt -> 'a -> 'a) -> t -> init:'a -> 'a
-    val for_all : f:(elt -> bool) -> t -> bool
-    val exists : f:(elt -> bool) -> t -> bool
-    val filter : f:(elt -> bool) -> t -> t
-    val partition : f:(elt -> bool) -> t -> t * t
-    val cardinal : t -> int
-    val elements : t -> elt list
-    val min_elt : t -> elt
-    val max_elt : t -> elt
-    val choose : t -> elt
-    val split : elt -> t -> t * bool * t
-  end
 val zset_of_list : zz list -> Set.t
 val canonical_of_number : Number.z -> zz
 val of_number : Number.z -> zz

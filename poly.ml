@@ -20,13 +20,8 @@
 (* USA or see <http://www.gnu.org/licenses/>.                          *)
 (***********************************************************************)
 
-open StdLabels
-open MoreLabels
-module Unix = UnixLabels
-open Printf
-open Scanf
+open Core.Std
 open ZZp.Infix
-module Map = PMap.Map
 
 let rec rfind ~f low high =
   if low >= high then raise Not_found
@@ -61,8 +56,8 @@ let init degree ~f =
 let make degree x =
   if x =: ZZp.zero then { a = [| ZZp.zero |]; degree = 0; }
   else
-    { a = Array.init (degree + 1) ~f:(fun i -> x);
-      degree = degree;
+    { a = Array.create ~len:(degree + 1) x;
+      degree;
     }
 
 let zero = make 0 ZZp.zero
@@ -91,22 +86,15 @@ let to_string x =
 let splitter = Str.regexp "[ \t]+\\+[ \t]+"
 
 let parse_digit s =
-  try sscanf s "%s z^%d" (fun digit degree -> (degree,ZZp.of_string digit))
+  try Scanf.sscanf s "%s z^%d" (fun digit degree -> (degree,ZZp.of_string digit))
   with End_of_file -> (0,ZZp.of_string s)
-
-let map_keys map =
-  Map.fold ~init:[] ~f:(fun ~key ~data keylist -> key::keylist) map
-
 
 let of_string s =
   let digits = List.map ~f:parse_digit (Str.split splitter s) in
-  let digitmap = Map.of_alist digits in
-  let degree = MList.reduce ~f:max (map_keys digitmap) in
+  let digitmap = Int.Map.of_alist_exn digits in
+  let degree = MList.reduce ~f:max (Map.keys digitmap) in
   init degree ~f:(fun deg ->
-                    try Map.find deg digitmap
-                    with Not_found -> ZZp.zero)
-
-
+    Option.value ~default:ZZp.zero (Map.find digitmap deg))
 
 let print x =
   for i = degree x downto 1 do
@@ -167,7 +155,7 @@ let eval poly z =
 
 let mult x y =
   let mdegree = degree x + degree y in
-  let prod = { a = Array.make ( mdegree + 1 ) ZZp.zero;
+  let prod = { a = Array.create ~len:(mdegree + 1) ZZp.zero;
                degree = mdegree ;
              }
   in
@@ -206,8 +194,11 @@ let rec divmod x y =
     let (q,r) = divmod new_x y in
     (add q m,r)
 
-let modulo x y = let (q,r) = divmod x y in r
-let div x y = let (q,r) = divmod x y in q
+let modulo x y =
+  snd (divmod x y)
+
+let div x y =
+  fst (divmod x y)
 
 let const_coeff x = x.a.(0)
 let nth_coeff x n = x.a.(n)
@@ -217,7 +208,7 @@ let const c = make 0 c
 let rec gcd_rec x y =
   if eq y zero then x
   else
-    let (q,r) = divmod x y in
+    let (_q,r) = divmod x y in
     gcd_rec y r
 
 let gcd x y =
