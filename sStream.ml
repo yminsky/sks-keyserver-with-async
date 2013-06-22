@@ -20,6 +20,8 @@
 (* USA or see <http://www.gnu.org/licenses/>.                          *)
 (***********************************************************************)
 
+open Core.Std
+
 type 'b sstream = { mutable first: 'b option;
                     next: unit -> 'b option;
                   }
@@ -30,10 +32,10 @@ let make ?first next = { first = first;
 
 let next s =
   match s.first with
-      None -> s.next ()
-    | v ->
-        s.first <- None;
-        v
+  | None -> s.next ()
+  | v ->
+    s.first <- None;
+    v
 
 let peek s =
   if s.first = None

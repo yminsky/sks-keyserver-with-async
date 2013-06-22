@@ -21,7 +21,7 @@
 (* USA or see <http://www.gnu.org/licenses/>.                          *)
 (***********************************************************************)
 
-open Printf
+open Core.Std
 
 type ptype = | Reserved
              | Public_Key_Encrypted_Session_Key_Packet

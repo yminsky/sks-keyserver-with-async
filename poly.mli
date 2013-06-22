@@ -1,5 +1,5 @@
 val rfind : f:(int -> bool) -> int -> int -> int
-type t = { a : ZZp.zz array; degree : int; }
+type t = { a : ZZp.t array; degree : int; }
 val compute_degree : ZZp.zz array -> int
 val init : int -> f:(int -> ZZp.zz) -> t
 val make : int -> ZZp.zz -> t
@@ -11,7 +11,6 @@ val copy : t -> t
 val to_string : t -> string
 val splitter : Str.regexp
 val parse_digit : string -> int * ZZp.zz
-val map_keys : ('a, 'b) PMap.Map.t -> 'a list
 val of_string : string -> t
 val print : t -> unit
 exception NotEqual

@@ -1,0 +1,3 @@
+true: syntax(camlp4o)
+true: package(core,sexplib.syntax,bin_prot.syntax,comparelib.syntax,fieldslib.syntax,variantslib.syntax,async,cryptokit)
+true: thread,debug,annot

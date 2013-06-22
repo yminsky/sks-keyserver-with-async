@@ -21,10 +21,7 @@
 (* USA or see <http://www.gnu.org/licenses/>.                          *)
 (***********************************************************************)
 
-open StdLabels
-open MoreLabels
-module Unix=UnixLabels
-
+open Core.Std
 
 class metered_out_channel outc =
 object (self)

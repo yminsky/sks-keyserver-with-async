@@ -21,12 +21,8 @@
 (***********************************************************************)
 
 open Common
-open StdLabels
-open MoreLabels
-module Unix = UnixLabels
-open Printf
+open Core.Std
 open ZZp.Infix
-
 
 let rand_int n = Random.State.int RMisc.det_rng n
 let rand_bits () = Random.State.bits RMisc.det_rng
@@ -37,7 +33,6 @@ let test name cond =
   incr ctr;
   if not cond then raise
     (Unit_test_failure (sprintf "Poly test %s:%d failed" name !ctr))
-
 
 let divtest () =
   let x = Poly.of_array [| ZZp.one; ZZp.one; ZZp.one; ZZp.one |] in
@@ -50,9 +45,11 @@ let divtest () =
 
 let rand_divtest () =
   let p1 = Poly.of_array (Array.init (1 + rand_int 20)
-                            ~f:(fun i -> ZZp.rand rand_bits)) in
+                            ~f:(fun _ -> ZZp.rand rand_bits))
+  in
   let p2 = Poly.of_array (Array.init (1 + rand_int 20)
-                            ~f:(fun i -> ZZp.rand rand_bits)) in
+                            ~f:(fun _ -> ZZp.rand rand_bits))
+  in
   let (q,r) = Poly.divmod p1 p2 in
   let z = ZZp.rand rand_bits in
   let r_z = Poly.eval r z
@@ -68,11 +65,11 @@ let divides x y =
 
 let gcd_test () =
   let p1 = Poly.of_array (Array.init (1 + rand_int 20)
-                            ~f:(fun i -> ZZp.rand rand_bits)) in
+                            ~f:(fun _ -> ZZp.rand rand_bits)) in
   let p2 = Poly.of_array (Array.init (1 + rand_int 20)
-                            ~f:(fun i -> ZZp.rand rand_bits)) in
+                            ~f:(fun _ -> ZZp.rand rand_bits)) in
   let p3 = Poly.of_array (Array.init (1 + rand_int 20)
-                            ~f:(fun i -> ZZp.rand rand_bits)) in
+                            ~f:(fun _ -> ZZp.rand rand_bits)) in
   let p1 = Poly.mult p1 p3 in
   let p2 = Poly.mult p2 p3 in
   let gcd = Poly.gcd p1 p2 in
@@ -87,10 +84,10 @@ let gcd_test () =
 
 let run () =
   begin
-    for i = 1 to 100  do
+    for _i = 1 to 100  do
       rand_divtest ()
     done;
-    for i = 1 to 100  do
+    for _i = 1 to 100  do
       gcd_test ()
     done;
     divtest ();

@@ -20,12 +20,9 @@
 (* USA or see <http://www.gnu.org/licenses/>.                          *)
 (***********************************************************************)
 
-open StdLabels
-open MoreLabels
-
 open Common
+open Core.Std
 open Packet
-open Printf
 
 exception Overlong_mpi
 exception Partial_body_length of int
@@ -102,9 +99,9 @@ let offset_read_packet cin =
 (********************************************************)
 
 let offset_length_read_packet cin =
-  let offset = pos_in cin#inchan in
+  let offset = In_channel.pos cin#inchan |> Int64.to_int_exn in
   let packet = read_packet cin in
-  let final_offset = pos_in cin#inchan in
+  let final_offset = In_channel.pos cin#inchan |> Int64.to_int_exn in
   (packet,offset,final_offset - offset)
 
 (********************************************************)
@@ -159,7 +156,8 @@ let parse_ecdh_pubkey cin =
    let kdf_res = cin#read_int_size 1 in
    let kdf_hash = cin#read_int_size 1 in
    let kdf_algid = cin#read_int_size 1 in
-   plerror 10 "KDF_length: %d, KDF_res %d hash %d algid %d" kdf_length kdf_res kdf_hash kdf_algid;
+   plerror 10 "KDF_length: %d, KDF_res %d hash %d algid %d"
+     kdf_length kdf_res kdf_hash kdf_algid;
    let psize = oid_to_psize oid
    in
    (mpi, psize)
@@ -186,14 +184,14 @@ let parse_pubkey_info packet =
       in
       let mpis = match algorithm with
        | 18 -> tmpmpi
-       | _ -> let mmpis = read_mpis cin in List.hd mmpis
+       | _ -> let mmpis = read_mpis cin in List.hd_exn mmpis
       in
       (algorithm,mpis,None, tmpsize)
       | 2 | 3 ->
       let expiration = cin#read_int_size 2 in
       let algorithm = cin#read_byte in
       let mpis = read_mpis cin in
-      let mpi = List.hd mpis in
+      let mpi = List.hd_exn mpis in
       (algorithm,mpi,Some expiration, -1)
       | _ -> failwith (sprintf "Unexpected pubkey version: %d" version)
   in
@@ -358,4 +356,4 @@ let get_times sign = match sign with
       match (ctime,exptime_delta) with
         | (Some x,None) -> (Some x,None)
         | (None,_) -> (None,None)
-        | (Some x,Some y) -> (Some x,Some (Int64.add x y))
+        | (Some x,Some y) -> (Some x,Some (Int64.(x + y)))

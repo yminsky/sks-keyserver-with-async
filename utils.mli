@@ -1,12 +1,13 @@
-val compose : ('a -> 'b) -> ('c -> 'a) -> 'c -> 'b
+open Core.Std
+
 val iceil : float -> int
 val ifloor : float -> int
 val bsearch : f:(int -> int) -> low:int -> high:int -> int
 val bsearch_val : f:(int -> int * 'a) -> low:int -> high:int -> int * 'a
 val is_alnum : char -> bool
-val extract_words_rec :
-  string -> start:int -> len:int -> string PSet.Set.t -> string PSet.Set.t
-val extract_word_set : string -> string PSet.Set.t
+val extract_words_rec
+  : string -> start:int -> len:int -> String.Set.t -> String.Set.t
+val extract_word_set : string -> String.Set.t
 val extract_words : string -> string list
 val ptest : string -> bool -> unit
 val for_loop : int -> int -> 'a -> (int -> 'a -> 'a) -> 'a
