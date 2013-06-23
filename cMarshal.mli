@@ -30,8 +30,6 @@ val unmarshal_bitstring :
 val marshal_fixed_sarray :
   < write_int : int -> 'a; write_string : string -> unit; .. > ->
   string array -> unit
-val unmarshal_fixed_sarray :
-  < read_int : int; read_string : int -> 'a; .. > -> 'b -> 'a array
 val marshal_set :
   f:((< write_int : int -> 'b; .. > as 'a) -> ZZp.zz -> unit) ->
   'a -> ZZp.Set.t -> unit

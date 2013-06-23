@@ -21,9 +21,7 @@
 (* USA or see <http://www.gnu.org/licenses/>.                          *)
 (***********************************************************************)
 
-open StdLabels
-open MoreLabels
-module ZSet = ZZp.Set
+open Core.Std
 
 let marshal_string cout string =
   ignore (cout:>Channel.out_channel_obj);
@@ -45,21 +43,21 @@ let unmarshal_lstring length cin =
 
 (*****)
 
-let rec marshal_array ~f cout array =
+let marshal_array ~f cout array =
   cout#write_int (Array.length array);
   Array.iter ~f:(f cout) array
 
-let rec unmarshal_array ~f cin =
+let unmarshal_array ~f cin =
   let len = cin#read_int in
-  Array.init len ~f:(fun i -> f cin)
+  Array.init len ~f:(fun _ -> f cin)
 
 (*****)
 
-let rec marshal_list ~f cout list =
+let marshal_list ~f cout list =
   cout#write_int (List.length list);
   List.iter ~f:(f cout) list
 
-let rec unmarshal_list ~f cin =
+let unmarshal_list ~f cin =
   Array.to_list (unmarshal_array ~f cin)
 
 (*****)
@@ -73,9 +71,6 @@ let marshal_fixed_sarray cout sarray =
   cout#write_int len;
   marshal_array ~f:marshal_lstring cout sarray
 
-let unmarshal_fixed_sarray cin sarray =
-  let len = cin#read_int in
-  unmarshal_array ~f:(unmarshal_lstring len) cin
 
 (*****)
 
@@ -92,7 +87,7 @@ let unmarshal_bitstring cin =
 (*****)
 
 let marshal_set ~f cout set =
-  let array = Array.of_list (ZSet.elements set) in
+  let array = Array.of_list (Set.elements set) in
   marshal_array ~f cout array
 
 
@@ -108,7 +103,7 @@ let marshal_sockaddr cout sockaddr =
         cout#write_byte 0; marshal_string cout s
     | Unix.ADDR_INET (s,i) ->
         cout#write_byte 1;
-        marshal_string cout (Unix.string_of_inet_addr s);
+        marshal_string cout (Unix.Inet_addr.to_string s);
         cout#write_int i
 
 let unmarshal_sockaddr cin =
@@ -117,7 +112,7 @@ let unmarshal_sockaddr cin =
     | 1 ->
         let s = unmarshal_string cin in
         let i = cin#read_int in
-        Unix.ADDR_INET (Unix.inet_addr_of_string s,i)
+        Unix.ADDR_INET (Unix.Inet_addr.of_string s,i)
     | _ -> failwith "Unmarshalling failed: malformed sockaddr"
 
 (************************************************************)

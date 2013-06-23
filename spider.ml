@@ -21,13 +21,9 @@
 (* USA or see <http://www.gnu.org/licenses/>.                          *)
 (***********************************************************************)
 
-open StdLabels
-open MoreLabels
-open Printf
 open Pstyle
 open Common
-module Set = PSet.Set
-module Unix = UnixLabels
+open Core.Std
 
 let stats_timeout = 10
 
@@ -51,18 +47,16 @@ let input_lines cin =
 let get_ip_opt hostname =
   if hostname = "localhost" then None
   else
-    try
-      let he = Unix.gethostbyname hostname in
-      Some he.Unix.h_addr_list
-    with
-      Invalid_argument _ | Not_found -> None
+    Option.map (Unix.Host.getbyname hostname)
+      ~f:(fun host -> host.Unix.Host.addresses)
 
 let fetch_url url =
   let cin = Unix.open_process_in (sprintf "curl -s -m %d \"%s\"" stats_timeout url) in
   let lines = input_lines cin in
   match Unix.close_process_in cin with
-  | Unix.WEXITED 0 -> Some lines
-  | _ -> None
+  | Ok () -> Some lines
+  | Error _ -> None
+
 
 let start_line = Str.regexp "<h2>Gossip Peers.*"
 let whitespace = Str.regexp "[ \t<]+"
@@ -119,15 +113,23 @@ let multi_fetch (host,port) =
   in
   loop ports
 
+module Inet_addr_option = struct
+  module T = struct
+    type t = Unix.Inet_addr.t array option with sexp, compare
+  end
+  include T
+  include Comparable.Make(T)
+end
+
 let find_all peer =
-  let visited = ref (Set.singleton None) in
+  let visited = ref (Inet_addr_option.Set.singleton None) in
   let rec dfs peer =
     let ip = get_ip_opt (fst peer) in
-    if Set.mem ip !visited then
+    if Set.mem !visited ip then
       []
     else
       begin
-        visited := Set.add ip !visited;
+        visited := Set.add !visited ip;
         match multi_fetch peer with
         | None -> (* retrieval failed *)
             eprintf "(%s,%d) FAILED\n%!" (fst peer) (snd peer);
@@ -139,7 +141,7 @@ let find_all peer =
               peer :: others
             with e ->
               eprintf "(%s,%d) FAILED with %s\n%!" (fst peer) (snd peer)
-                (Printexc.to_string e);
+                (Exn.to_string e);
               []
       end
   in

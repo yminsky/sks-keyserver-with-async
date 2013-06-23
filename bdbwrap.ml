@@ -32,41 +32,38 @@ let wrap name f =
     let rval = f () in
     plerror 10 "  %s Done )" name;
     rval
-  with
-      e ->
-        plerror 10 "  %s Done <%s>)" name (Printexc.to_string e);
-        raise e
+  with e ->
+    plerror 10 "  %s Done <%s>)" name (Printexc.to_string e);
+    raise e
 
-
-module Dbenv =
-struct
+module Dbenv = struct
   include Bdb.Dbenv
-  let create x = wrap "Dbenv.create" (fun () -> create x)
-  let dopen x y z w = wrap "Dbenv.dopen" (fun () -> dopen x y z w)
-  let sopen x y z = wrap "Dbenv.sopen" (fun () -> sopen x y z)
-  let close x = wrap "Dbenv.close" (fun () -> close x)
+  let create x      = wrap "Dbenv.create" (fun () -> create x)
+  let dopen x y z w = wrap "Dbenv.dopen"  (fun () -> dopen x y z w)
+  let sopen x y z   = wrap "Dbenv.sopen"  (fun () -> sopen x y z)
+  let close x       = wrap "Dbenv.close"  (fun () -> close x)
   let set_verbose_internal x y z =
-    wrap "Dbenv.set_verbose_internal" (fun () -> set_verbose_internal x y z)
-  let set_verbose x y z = wrap "Dbenv.set_verbose"
-                            (fun () -> set_verbose x y z)
+    wrap "Dbenv.set_verbose_internal"
+      (fun () -> set_verbose_internal x y z)
+  let set_verbose x y z =
+    wrap "Dbenv.set_verbose"
+      (fun () -> set_verbose x y z)
   let set_cachesize x ~gbytes ~bytes ~ncache =
-    wrap "Dbenv.set_cachesize" (fun () -> set_cachesize x
-                                  ~gbytes ~bytes ~ncache)
+    wrap "Dbenv.set_cachesize"
+      (fun () -> set_cachesize x ~gbytes ~bytes ~ncache)
 end
 
 
-module Db =
-struct
+module Db = struct
   include Bdb.Db
 
-  let create ?dbenv y =  wrap "Db.create" (fun () -> create ?dbenv y)
-  let dopen x y z w u =  wrap "Db.dopen" (fun () -> dopen x y z w u)
-  let close x = wrap "Db.close" (fun () -> close x)
-  let del x ?txn y = wrap "Db.del" (fun () -> del x ?txn y)
-  let put x ?txn ~key ~data y = wrap "Db.put"
-                                  (fun () -> put x ?txn ~key ~data y)
-  let get x ?txn y z = wrap "Db.get" (fun () -> get x ?txn y z )
-  let set_flags x y = wrap "Db.set_flags" (fun () -> set_flags x y)
+  let create ?dbenv y         = wrap "Db.create" (fun () -> create ?dbenv y)
+  let dopen x y z w u         = wrap "Db.dopen" (fun () -> dopen x y z w u)
+  let close x                 = wrap "Db.close" (fun () -> close x)
+  let del x ?txn y            = wrap "Db.del" (fun () -> del x ?txn y)
+  let put x ?txn ~key ~data y = wrap "Db.put" (fun () -> put x ?txn ~key ~data y)
+  let get x ?txn y z          = wrap "Db.get" (fun () -> get x ?txn y z )
+  let set_flags x y           = wrap "Db.set_flags" (fun () -> set_flags x y)
   let sopen ?dbenv x y ?moreflags z w =
     wrap "Db.sopen" (fun () -> sopen ?dbenv x y ?moreflags z w )
 
@@ -79,8 +76,7 @@ struct
 end
 
 
-module Cursor =
-struct
+module Cursor = struct
   include Bdb.Cursor
 
   let create ?writecursor ?txn x =
@@ -108,15 +104,19 @@ struct
 end
 
 
-module Txn =
-struct
+module Txn = struct
   include Bdb.Txn
-  let set_txn_max x y = wrap "Txn.set_txn_max" (fun () -> set_txn_max x y)
-  let abort x = wrap "Txn.abort" (fun () -> abort x)
-  let txn_begin x y z = wrap "Txn.txn_begin" (fun () -> txn_begin x y z)
+
+  let set_txn_max x y =
+    wrap "Txn.set_txn_max" (fun () -> set_txn_max x y)
+  let abort x =
+    wrap "Txn.abort" (fun () -> abort x)
+  let txn_begin x y z =
+    wrap "Txn.txn_begin" (fun () -> txn_begin x y z)
   let checkpoint x ~kbyte ~min y =
     wrap "Txn.checkpoint" (fun () -> checkpoint x ~kbyte ~min y)
-  let commit x y = wrap "Txn.commit" (fun () -> commit x y)
+  let commit x y =
+    wrap "Txn.commit" (fun () -> commit x y)
 end
 
 
