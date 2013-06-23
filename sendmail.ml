@@ -28,31 +28,17 @@ type msg = { headers: (string * string) list;
              body: string;
            }
 
-let process_status_to_string ps =
-  let (name,code) =
-    match ps with
-    | Unix.WEXITED n -> ("Exited",n)
-    | Unix.WSIGNALED n -> ("Signaled",n)
-    | Unix.WSTOPPED n -> ("Stopped",n)
-  in
-  sprintf "%s(%d)" name code
-
-exception Unwrap_failure
-let unwrap x = match x with
-    None -> raise Unwrap_failure
-  | Some x -> x
-
-
 (** Invokes sendmail and sends the argument to sendmail via stdin *)
 let send_text text =
+  let status = ref (Ok ()) in
   let cout = Unix.open_process_out !Settings.sendmail_cmd in
-  let status = ref None in
   protect ~f:(fun () -> output_string cout text)
-    ~finally:(fun () -> status := Some (Unix.close_process_out cout));
-  if unwrap !status <> Unix.WEXITED 0 then
-    failwith (sprintf "Sendmail.send_text failed: %s"
-                (process_status_to_string (unwrap !status)))
-  else ()
+    ~finally:(fun () -> status := Unix.close_process_out cout);
+  match !status with
+  | Ok () -> ()
+  | Error error ->
+    failwiths "Sendmail.send_text failed" error
+      Unix.Exit_or_signal.sexp_of_error
 
 (** converts message to string ready for sending via you favoriate
   MTA *)
@@ -74,25 +60,24 @@ let send msg = send_text (msg_to_string msg)
   to be an initial sequence of headers with empty field names
 *)
 let rec remove_continuation headers =  match headers with
-    [] -> []
-  | ("",entry)::tl ->
-      remove_continuation tl
+  | [] -> []
+  | ("",_entry)::tl -> remove_continuation tl
   | headers -> headers
 
 
 let rec filter_headers_from_headers headers fields = match headers with
   | [] -> []
-  | (("",contents) as hd)::tl ->
-      hd::(filter_headers_from_headers tl fields)
-  | ((field,contents) as hd)::tl ->
-      if Set.mem (String.lowercase field) fields then
-        hd::(filter_headers_from_headers tl fields)
-      else
-        filter_headers_from_headers (remove_continuation tl)
-          fields
+  | (("",_contents) as hd) :: tl ->
+    hd :: filter_headers_from_headers tl fields
+  | ((field,_contents) as hd) :: tl ->
+    if Set.mem fields (String.lowercase field) then
+      hd :: filter_headers_from_headers tl fields
+    else
+      filter_headers_from_headers (remove_continuation tl)
+        fields
 
 let filter_headers msg fields =
-  let fields = Set.of_list (List.map ~f:String.lowercase fields) in
+  let fields = String.Set.of_list (List.map ~f:String.lowercase fields) in
   { msg with
       headers = filter_headers_from_headers msg.headers fields
   }
