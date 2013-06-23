@@ -13,7 +13,7 @@ val create :
 val child_keys : 'a tree -> Bitstring.t -> Bitstring.t list
 val get_zzp_elements : 'a tree -> node -> ZZp.Set.t
 val clean : 'a option -> 'a tree -> unit
-val points : 'a tree -> ZZp.zz array
+val points : 'a tree -> ZZp.t array
 val get_node_key : ?sef:bool -> 'a tree -> Bitstring.t -> node
 val svalues : node -> ZZp.mut_array
 val size : node -> int

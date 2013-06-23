@@ -24,14 +24,13 @@ open Core.Std
 
 
 open Number.Infix
-type zz = Number.z
-type t = zz
-type zzref = Number.z ref
-type mut_array = zz array
+type t = Number.z
+type tref = t ref
+type mut_array = t array
 
 module Number = struct
   module T_ = struct
-    type t = zz
+    type t = Number.z
     let compare = Number.compare
     let to_string = Number.to_string
     let of_string = Number.of_string

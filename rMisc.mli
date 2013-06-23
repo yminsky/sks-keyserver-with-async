@@ -23,5 +23,5 @@ val padset : String.Set.t -> int -> String.Set.t
 val truncate : string -> int -> string
 val truncset : String.Set.t -> int -> String.Set.t
 val order_string : string
-val print_ZZp_list : ZZp.zz list -> unit
+val print_ZZp_list : ZZp.t list -> unit
 val print_ZZp_set : ZZp.Set.t -> unit
