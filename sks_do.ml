@@ -21,15 +21,10 @@
 (* USA or see <http://www.gnu.org/licenses/>.                          *)
 (***********************************************************************)
 
-open StdLabels
-open MoreLabels
-open Printf
 open Common
-open Packet
+open Core.Std
 open DbMessages
-module Unix = UnixLabels
 module PTree = PrefixTree
-module Map = PMap.Map
 
 let fail reason =
   printf "%s\n" reason;

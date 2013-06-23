@@ -21,21 +21,17 @@
 (* USA or see <http://www.gnu.org/licenses/>.                          *)
 (***********************************************************************)
 
-open StdLabels
-open MoreLabels
 open Common
-open Printf
-
-module Map = PMap.Map
-module Set = PSet.Set
+open Core.Std
 
 type msg = { headers: (string * string) list;
              body: string;
            }
 
 let process_status_to_string ps =
-  let (name,code) = match ps with
-      Unix.WEXITED n -> ("Exited",n)
+  let (name,code) =
+    match ps with
+    | Unix.WEXITED n -> ("Exited",n)
     | Unix.WSIGNALED n -> ("Signaled",n)
     | Unix.WSTOPPED n -> ("Stopped",n)
   in

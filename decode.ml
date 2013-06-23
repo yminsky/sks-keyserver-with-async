@@ -21,13 +21,7 @@
 (* USA or see <http://www.gnu.org/licenses/>.                          *)
 (***********************************************************************)
 
-open ZZp.Infix
-open StdLabels
-open MoreLabels
-module Unix=UnixLabels
-open Printf
-
-module ZSet = ZZp.Set
+open Core.Std
 open LinearAlg
 open ZZp.Infix
 
@@ -71,9 +65,8 @@ let interpolate ~values ~points ~d =
 
     Matrix.set matrix mbar j (ZZp.sub fjkjmb kjma)
   done;
-
   (try reduce matrix
-   with Failure s -> raise Interpolation_failure);
+   with Failure _ -> raise Interpolation_failure);
 
   let acoeffs = Array.init (ma + 1)
                   ~f:(fun j -> if j = ma then ZZp.one
@@ -130,7 +123,7 @@ let gen_splitter f =
   let zaqo = Poly.sub zaq Poly.one in
   zaqo
 
-let rec rand_split f =
+let rand_split f =
   let splitter = gen_splitter f in
   let first = Poly.gcd splitter f in
   let second = Poly.div f first in
@@ -139,13 +132,13 @@ let rec rand_split f =
 let rec factor f =
   let degree = Poly.degree f in
   if degree = 1
-  then ZSet.add (ZZp.neg (Poly.const_coeff f)) ZSet.empty
+  then ZZp.Set.singleton (ZZp.neg (Poly.const_coeff f))
   else if degree = 0
-  then ZSet.empty
+  then ZZp.Set.empty
   else
     let (f1,f2) = rand_split f in
     flush stdout;
-    ZSet.union (factor f1) (factor f2)
+    Set.union (factor f1) (factor f2)
 
 let shorten array =
   Array.init (Array.length array - 1) ~f:(fun i -> array.(i))
@@ -167,6 +160,4 @@ let reconcile ~values ~points ~d =
   and bset = factor denom
   in (aset,bset)
 
-let array_to_set array =
-  Array.fold_left ~f:(fun set el -> ZSet.add el set) ~init:ZSet.empty array
 
