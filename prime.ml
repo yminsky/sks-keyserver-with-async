@@ -20,9 +20,7 @@
 (* USA or see <http://www.gnu.org/licenses/>.                          *)
 (***********************************************************************)
 
-open StdLabels
-open MoreLabels
-module Unix=UnixLabels
+open Core.Std
 open Number.Infix
 
 (** returns random string with exactly <bits> bits.  Highest order bit is
@@ -39,7 +37,7 @@ let randbits rfunc nbits =
   rval
 
 (** chooses random int between 0 and high-1 *)
-let rec randint rfunc high =
+let randint rfunc high =
   let nbits = Number.nbits high in
   let nbytes = nbits / 8 + (if nbits mod 8 = 0 then 0 else 1) in
   let rstring = Utils.random_string rfunc nbytes in

@@ -20,6 +20,8 @@
     sendmail.cmo \
     mTimer.cmo \
     ehandlers.cmo \
+    prime.cmo \
+    rMisc.cmo \
 
 
 
