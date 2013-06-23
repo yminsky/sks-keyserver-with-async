@@ -87,8 +87,7 @@ let repeat_forever_simple timeout callback =
 let incr_day time =
   let tm = Unix.localtime time in
   let tm = {tm with Unix.tm_mday = tm.Unix.tm_mday + 1; } in
-  let (time,tm) = Unix.mktime tm in
-  time
+  fst (Unix.mktime tm)
 
 let set_hour time hour =
   let tm = Unix.localtime time in
@@ -100,8 +99,7 @@ let set_hour time hour =
                              if hour < tm.Unix.tm_hour then 1 else 0
            }
   in
-  let (time,tm) = Unix.mktime tm in
-  time
+  fst (Unix.mktime tm)
 
 let repeat_at_hour hour callback =
   let rec loop oldtime () =
