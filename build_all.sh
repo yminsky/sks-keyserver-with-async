@@ -22,6 +22,10 @@
     ehandlers.cmo \
     prime.cmo \
     rMisc.cmo \
+    bitstring.cmo \
+    add_mail.cmo \
+    linearAlg.cmo \
+    decode_test.cmo \
 
 
 

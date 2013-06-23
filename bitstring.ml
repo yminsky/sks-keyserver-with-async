@@ -20,10 +20,7 @@
 (* USA or see <http://www.gnu.org/licenses/>.                          *)
 (***********************************************************************)
 
-open StdLabels
-open MoreLabels
-
-module Unix=UnixLabels
+open Core.Std
 
 exception Error of string
 exception LengthError of string

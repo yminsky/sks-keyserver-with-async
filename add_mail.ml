@@ -21,12 +21,7 @@
 (* USA or see <http://www.gnu.org/licenses/>.                          *)
 (***********************************************************************)
 
-open StdLabels
-open MoreLabels
-open Printf
-module Unix = UnixLabels
-module Map = PMap.Map
-module Set = PSet.Set
+open Core.Std
 
 (** Argument parsing *)
 
@@ -42,14 +37,13 @@ let parse_spec = [ ]
 
 let dirname =
   Arg.parse parse_spec anon_options usage_string;
-  if List.length !anonymous <> 1
-  then (
+  match !anonymous with
+  | [x] -> Filename.concat x "messages"
+  | _ ->
     printf "Wrong number (%d) of arguments given.  %s\n"
-          (List.length !anonymous)
-          usage_string;
+      (List.length !anonymous)
+      usage_string;
     exit (-1)
-  ) else
-    Filename.concat (List.hd !anonymous) "messages"
 
 (** dumps contents of one file into another *)
 let pipe_file =
@@ -65,13 +59,18 @@ let pipe_file =
   pipe_file
 
 let run () =
-  if not (Sys.file_exists dirname)
-  then Unix.mkdir dirname 0o700;
+  (* create the directory if it doesn't exist *)
+  begin match Sys.file_exists dirname with
+  | `No -> Unix.mkdir dirname ~perm:0o700;
+  | `Yes -> ()
+  | `Unknown ->
+    failwithf "existence check of directory <%s> failed" dirname ()
+  end;
   let fname = sprintf "msg-%08d" (Random.int 100000000) in
   let fname = Filename.concat dirname fname in
   let f = open_out fname in
   pipe_file stdin f;
-  close_out f;
+  Out_channel.close f;
   Sys.rename fname (fname ^ ".ready")
 
 let () =

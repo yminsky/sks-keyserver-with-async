@@ -20,13 +20,10 @@
 (* USA or see <http://www.gnu.org/licenses/>.                          *)
 (***********************************************************************)
 
-open StdLabels
-open MoreLabels
-open Printf
-open Decode
 open Common
+open Core.Std
+open Decode
 open ZZp.Infix
-module ZSet = ZZp.Set
 
 let rand_int = Random.State.int RMisc.det_rng
 let rand_bits () = Random.State.bits RMisc.det_rng
@@ -34,19 +31,16 @@ let rand_bits () = Random.State.bits RMisc.det_rng
 (*************************************************************************)
 (** Simple counter table *)
 
-let ctr_table = Hashtbl.create 0
+let ctr_table = String.Table.create ()
 
 let incr_count name =
-  try
-    let ctr_ref = Hashtbl.find ctr_table name in
-    incr ctr_ref
-  with
-      Not_found ->
-        Hashtbl.add ctr_table ~key:name ~data:(ref 1)
+  let count = Hashtbl.find_or_add ctr_table name ~default:(fun () -> ref 0) in
+  incr count
 
 let read_count name =
-  try !(Hashtbl.find ctr_table name)
-  with Not_found -> 0
+  match Hashtbl.find ctr_table name with
+  | Some x -> !x
+  | None -> 0
 
 (*************************************************************************)
 
@@ -73,7 +67,8 @@ let interp_test () =
   let num = rand_poly num_deg in
   let denom = rand_poly denom_deg in
   test "poly construction"
-    (Poly.degree num == num_deg && Poly.degree denom = denom_deg );
+    (Poly.degree num = num_deg
+     && Poly.degree denom = denom_deg );
 
   let mbar = rand_int 9 + 1 in
   let n = mbar + 1 in
@@ -107,9 +102,9 @@ let interp_test () =
 let set_init ~f n =
   let rec loop n set =
     if n = 0 then set
-    else loop (n - 1) (ZSet.add (f ()) set)
+    else loop (n - 1) (Set.add set (f ()))
   in
-  loop n ZSet.empty
+  loop n ZZp.Set.empty
 
 let ( &> ) f g x = f (g x)
 let ( &< ) g f x = f (g x)
@@ -129,32 +124,32 @@ let reconcile_test () =
   let set1 = set_init m1 ~f:(fun () -> ZZp.rand rand_bits) in
   let set2 = set_init m2 ~f:(fun () -> ZZp.rand rand_bits) in
   (* printf "mbar: %d, m: %d, m1: %d, m2: %d\n%!" mbar m m1 m2; *)
-  test "full sets" (ZSet.cardinal set1 = m1 && ZSet.cardinal set2 = m2);
-  test "empty intersection" (ZSet.is_empty @@ ZSet.inter set1 set2);
-  ZSet.iter ~f:(fun x -> ZZp.add_el ~svalues:svalues1 ~points x) set1;
-  ZSet.iter ~f:(fun x -> ZZp.add_el ~svalues:svalues2 ~points x) set2;
+  test "full sets" (Set.length set1 = m1 && Set.length set2 = m2);
+  test "empty intersection" (Set.is_empty @@ Set.inter set1 set2);
+  Set.iter set1 ~f:(fun x -> ZZp.add_el ~svalues:svalues1 ~points x);
+  Set.iter set2 ~f:(fun x -> ZZp.add_el ~svalues:svalues2 ~points x);
   let values = ZZp.mut_array_div svalues1 svalues2 in
   try
     let (diff1,diff2) =
       Decode.reconcile ~values ~points ~d:(m1 - m2)
     in
     test "size equality set1"
-      (ZSet.cardinal set1 = ZSet.cardinal diff1);
+      (Set.length set1 = Set.length diff1);
     test "size equality set2"
-      (ZSet.cardinal set2 = ZSet.cardinal diff2);
-    test "recon compare" (ZSet.equal diff1 set1 && ZSet.equal diff2 set2)
+      (Set.length set2 = Set.length diff2);
+    test "recon compare" (Set.equal diff1 set1 && Set.equal diff2 set2)
   with
       Low_mbar -> test "low mbar" (m > mbar)
 
 let factorization_test () =
   let deg = rand_int 10 + 1 in
-  let terms = Array.to_list (Array.init deg (fun _ -> rand_poly 1)) in
+  let terms = Array.to_list (Array.init deg ~f:(fun _ -> rand_poly 1)) in
   let poly = List.fold_left ~init:Poly.one ~f:Poly.mult terms in
   let roots = Decode.factor poly in
   let orig_roots =
     ZZp.zset_of_list (List.map ~f:(fun p -> ZZp.neg (Poly.to_array p).(0)) terms)
   in
-  test "factor equality" (ZSet.equal orig_roots roots)
+  test "factor equality" (Set.equal orig_roots roots)
 
 let interp_run () =
   let deg = rand_int 10 + 1 in
@@ -162,7 +157,8 @@ let interp_run () =
   let denom_deg = deg - num_deg in
   let num = rand_poly num_deg in
   let denom = rand_poly denom_deg in
-  if not (Poly.degree num == num_deg && Poly.degree denom = denom_deg )
+  if not (Poly.degree num = num_deg
+          && Poly.degree denom = denom_deg )
   then `poly_gen_falure (deg,num_deg,denom_deg,num,denom)
   else
 
@@ -186,7 +182,7 @@ let interp_run () =
 
 let run () =
   begin
-    for i = 1 to 100 do factorization_test () done;
-    for i = 1 to 100 do interp_test () done;
-    for i = 1 to 100 do reconcile_test () done;
+    for _i = 1 to 100 do factorization_test () done;
+    for _i = 1 to 100 do interp_test () done;
+    for _i = 1 to 100 do reconcile_test () done;
   end

@@ -20,10 +20,7 @@
 (* USA or see <http://www.gnu.org/licenses/>.                          *)
 (***********************************************************************)
 
-open StdLabels
-open MoreLabels
-module Unix=UnixLabels
-open Printf
+open Core.Std
 open ZZp.Infix
 
 exception Bug of string
@@ -52,7 +49,7 @@ struct
 
   type t = { columns: int;
              rows: int;
-             array: ZZp.zz array;
+             array: ZZp.t array;
            }
 
   let columns m = m.columns
@@ -62,7 +59,7 @@ struct
   let copy m = { m with array = Array.copy m.array; }
 
   let make ~columns ~rows init =
-    let array = Array.create (columns * rows) init in
+    let array = Array.create ~len:(columns * rows) init in
     { columns = columns;
       rows = rows;
       array = array;
@@ -188,7 +185,7 @@ struct
 
   type t = { columns: int;
              rows: int;
-             array: ZZp.zzref array;
+             array: ZZp.tref array;
            }
 
   let columns m = m.columns
@@ -208,7 +205,7 @@ struct
     }
 
   let make ~columns ~rows x =
-    init ~columns ~rows ~f:(fun i j -> x)
+    init ~columns ~rows ~f:(fun _ _ -> x)
 
   let lget m i j =
     ZZp.look (m.array.(i + j * m.columns))
@@ -297,14 +294,6 @@ let process_row m j =
     done
   with
       Exit -> ()
-
-let reduce m =
-  let (columns,rows) = Matrix.dims m in
-  if columns  < rows then raise (Bug "Matrix is too narrow to reduce");
-  for j = 0 to Matrix.rows m - 1 do
-    process_row m j;
-  done
-
 
 (****** Gaussian Reduction *****************)
 
