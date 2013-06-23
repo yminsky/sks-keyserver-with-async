@@ -22,14 +22,10 @@
 (* USA or see <http://www.gnu.org/licenses/>.                          *)
 (***********************************************************************)
 
-open StdLabels
-open MoreLabels
-module Unix=UnixLabels
+open Core.Std
 
 (** deterministic RNG *)
 let det_rng = Random.State.make [|104|]
-module Set = PSet.Set (* was: Polyset.Set *)
-module Map = PMap.Map
 
 let stringset_to_string stringset =
   let list = List.sort ~cmp:compare (Set.elements stringset) in
@@ -77,7 +73,7 @@ let conv_chans (cin, cout) =
 (************************************************************)
 
 let add_random rfunc bytelength set =
-  Set.add (random_string rfunc bytelength) set
+  Set.add set (random_string rfunc bytelength)
 
 let add_n_random rfunc bytelength ~n set =
   Utils.apply n (add_random rfunc bytelength) set
@@ -85,10 +81,10 @@ let add_n_random rfunc bytelength ~n set =
 let det_string_set ~bytes ~size =
   add_n_random
     (fun () -> Random.State.bits det_rng)
-    bytes ~n:size Set.empty
+    bytes ~n:size String.Set.empty
 
 let rand_string_set ~bytes ~size =
-  add_n_random Random.bits bytes ~n:size Set.empty
+  add_n_random Random.bits bytes ~n:size String.Set.empty
 
 let localize_string_set ~bytes ~diff set =
   add_n_random Random.bits bytes ~n:diff set
@@ -115,8 +111,8 @@ let print_string_set set =
 *)
 
 let add_sarray ~data sarray =
-  Array.fold_right ~f:(fun string set -> Set.add string set)
-    sarray ~init:data
+  Array.fold_right ~init:data sarray
+    ~f:(fun x set -> Set.add set x)
 
 (*****************************************************************)
 (*****************************************************************)
@@ -133,8 +129,8 @@ let pad string bytes =
 
 
 let padset stringset bytes =
-  Set.fold ~f:(fun el set -> Set.add (pad el bytes) set)
-    ~init:Set.empty stringset
+  Set.fold ~f:(fun set el -> Set.add set (pad el bytes))
+    ~init:String.Set.empty stringset
 
 let truncate string bytes =
   let len = String.length string in
@@ -146,8 +142,8 @@ let truncate string bytes =
     string
 
 let truncset stringset bytes =
-  Set.fold ~f:(fun el set -> Set.add (truncate el bytes) set)
-    ~init:Set.empty stringset
+  Set.fold ~f:(fun set el -> Set.add set (truncate el bytes))
+    ~init:String.Set.empty stringset
 
 
 

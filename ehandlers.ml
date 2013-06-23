@@ -21,13 +21,9 @@
 (* USA or see <http://www.gnu.org/licenses/>.                          *)
 (***********************************************************************)
 
-open StdLabels
-open MoreLabels
-open Printf
-
 open Common
+open Core.Std
 open Eventloop
-module Unix = UnixLabels
 
 (** Repeat callback ~request with a gap of redo_timeout, until
   either (test ()) is true or full_timeout has expired.
@@ -55,8 +51,8 @@ let repeat_until ~redo_timeout ~full_timeout ~test
 
 
 (** returns smallest floating point number larger than the argument *)
-let float_incr x = x +. x *. epsilon_float
-let float_decr x = x -. x *. epsilon_float
+let float_incr x = x +. x *. Float.epsilon
+let float_decr x = x -. x *. Float.epsilon
 
 let strftime time =
   let tm = Unix.localtime time in
