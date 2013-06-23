@@ -21,86 +21,84 @@
 (***********************************************************************)
 
 open Core.Std
-type zz
-type t = zz
+type t
 include Comparable with type t := t
 
-type zzref
+type tref
 type mut_array
-val order : Number.z ref
+val order : tref
 val nbits : int ref
 val nbytes : int ref
-val two : zz
-val zero : zz
-val one : zz
-val set_order : zz -> unit
+val two : t
+val zero : t
+val one : t
+val set_order : t -> unit
 val num_bytes : unit -> int
-val of_bytes : string -> zz
-val to_bytes : zz -> string
-val of_int : int -> zz
+val of_bytes : string -> t
+val to_bytes : t -> string
+val of_int : int -> t
 val to_N : 'a -> 'a
-val of_N : zz -> zz
-val add : zz -> zz -> zz
-val sub : zz -> zz -> zz
-val mul : zz -> zz -> zz
-val mult : zz -> zz -> zz
-val imult : zz -> int -> zz
-val add_fast : zz -> zz -> zz
-val mul_fast : zz -> zz -> zz
-val mult_fast : zz -> zz -> zz
-val canonicalize : zz -> zz
-val square : zz -> zz
-val square_fast : zz -> zz
-val imul : zz -> zz -> zz
-val neg : zz -> zz
-val inv : zz -> zz
-val div : zz -> zz -> zz
-(* val sub_fast : zz -> zz -> zz *)
-val lt : zz -> zz -> bool
-val gt : zz -> zz -> bool
-val eq : zz -> zz -> bool
-val neq : zz -> zz -> bool
-val to_string : zz -> string
-val of_string : string -> zz
-val print : zz -> unit
-val points : int -> zz array
+val of_N : t -> t
+val add : t -> t -> t
+val sub : t -> t -> t
+val mul : t -> t -> t
+val mult : t -> t -> t
+val imult : t -> int -> t
+val add_fast : t -> t -> t
+val mul_fast : t -> t -> t
+val mult_fast : t -> t -> t
+val canonicalize : t -> t
+val square : t -> t
+val square_fast : t -> t
+val imul : t -> t -> t
+val neg : t -> t
+val inv : t -> t
+val div : t -> t -> t
+(* val sub_fast : t -> t -> t *)
+val lt : t -> t -> bool
+val gt : t -> t -> bool
+val eq : t -> t -> bool
+val neq : t -> t -> bool
+val to_string : t -> string
+val of_string : string -> t
+val print : t -> unit
+val points : int -> t array
 val svalues : int -> mut_array
-val mult_in : zzref -> zz -> zz -> unit
-(* val mult_fast_in : zzref -> zz -> zz -> unit *)
-val add_in : zzref -> zz -> zz -> unit
-(* val add_fast_in : zzref -> zz -> zz -> unit *)
-val sub_in : zzref -> zz -> zz -> unit
-(* val sub_fast_in : zzref -> zz -> zz -> unit *)
-val copy_in : zzref -> zz -> unit
-val copy_out : zzref -> zz
-val make_ref : zz -> zzref
-val look : zzref -> zz
-val canonicalize_in : zzref -> unit
-val add_el_array : points: zz array -> zz -> zz array
-val del_el_array : points: zz array -> zz -> zz array
-val mult_array : svalues:mut_array -> zz array -> unit
-val add_el : svalues:mut_array -> points:zz array -> zz -> unit
-val del_el : svalues:mut_array -> points:zz array -> zz -> unit
-val array_mult : zz array -> zz array -> zz array
-val mut_array_div : mut_array -> mut_array -> zz array
+val mult_in : tref -> t -> t -> unit
+(* val mult_fast_in : tref -> t -> t -> unit *)
+val add_in : tref -> t -> t -> unit
+(* val add_fast_in : tref -> t -> t -> unit *)
+val sub_in : tref -> t -> t -> unit
+(* val sub_fast_in : tref -> t -> t -> unit *)
+val copy_in : tref -> t -> unit
+val copy_out : tref -> t
+val make_ref : t -> tref
+val look : tref -> t
+val canonicalize_in : tref -> unit
+val add_el_array : points: t array -> t -> t array
+val del_el_array : points: t array -> t -> t array
+val mult_array : svalues:mut_array -> t array -> unit
+val add_el : svalues:mut_array -> points:t array -> t -> unit
+val del_el : svalues:mut_array -> points:t array -> t -> unit
+val array_mult : t array -> t array -> t array
+val mut_array_div : mut_array -> mut_array -> t array
 val mut_array_copy : mut_array -> mut_array
-val cmp : zz -> zz -> int
+val cmp : t -> t -> int
 val length : mut_array -> int
-val mut_array_to_array : mut_array -> zz array
-val mut_array_of_array : zz array -> mut_array
-val to_string_array : zz -> string array
-val rand : (unit -> int) -> zz
+val mut_array_to_array : mut_array -> t array
+val mut_array_of_array : t array -> mut_array
+val to_string_array : t -> string array
+val rand : (unit -> int) -> t
 
-val zset_of_list : zz list -> Set.t
-val canonical_of_number : Number.z -> zz
-val of_number : Number.z -> zz
-val to_number : zz -> Number.z
-module Infix :
-  sig
-    val ( +: ) : zz -> zz -> zz
-    val ( -: ) : zz -> zz -> zz
-    val ( *: ) : zz -> zz -> zz
-    val ( /: ) : zz -> zz -> zz
-    val ( =: ) : zz -> zz -> bool
-    val ( <>: ) : zz -> zz -> bool
-  end
+val zset_of_list : t list -> Set.t
+val canonical_of_number : Number.z -> t
+val of_number : Number.z -> t
+val to_number : t -> Number.z
+module Infix : sig
+  val ( +: ) : t -> t -> t
+  val ( -: ) : t -> t -> t
+  val ( *: ) : t -> t -> t
+  val ( /: ) : t -> t -> t
+  val ( =: ) : t -> t -> bool
+  val ( <>: ) : t -> t -> bool
+end

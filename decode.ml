@@ -110,7 +110,7 @@ let factor_check x =
   if Poly.degree x = 1 || Poly.degree x = 0 then true
   else
     let z = Poly.of_array [| ZZp.zero; ZZp.one |] in
-    let zq = powmod ~modulus:x z !ZZp.order in
+    let zq = powmod ~modulus:x z (ZZp.to_number (ZZp.copy_out ZZp.order)) in
     let mz = Poly.scmult z (ZZp.of_int (-1)) in
     let zqmz = Poly.modulo (Poly.add zq mz) x in
     Poly.eq zqmz Poly.zero

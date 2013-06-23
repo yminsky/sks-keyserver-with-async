@@ -28,7 +28,7 @@ let rec rfind ~f low high =
   else if f(low) then low
   else rfind ~f (low + 1) high
 
-type t = { a : ZZp.zz array;
+type t = { a : ZZp.t array;
            (** coefficients, listed from lowest to highest degree *)
            degree : int; (** degree of polynomial *)
          }
